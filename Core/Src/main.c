@@ -15,7 +15,6 @@
 
 /* USER CODE BEGIN PM */
 #define QUEUE_LENGTH 1
-//#define ANGLE_THRESHOLD 0.5f  // Ngu?ng chênh l?ch góc t?i thi?u d? di chuy?n
 #define LIGHT_DIFF_THRESHOLD 5.0f  // Ngu?ng chênh l?ch ánh sáng t?i thi?u
 #define VERTICAL_MIN_ANGLE 0.0f  // Góc t?i thi?u cho d?ng co d?c
 #define VERTICAL_MAX_ANGLE 90.0f   // Góc t?i da cho d?ng co d?c
@@ -25,12 +24,11 @@
 
 /* USER CODE END PM */
 Stepper_HandleTypeDef vertical_stepper, horizontal_stepper;
-QueueHandle_t xStepperQueue;
 
 /* Queue Handles */
-QueueHandle_t xReadSensorsTaskHandle;
-QueueHandle_t xControlSteppersTaskHandle;
+QueueHandle_t xStepperQueue;
 QueueHandle_t xManualControlQueue;
+QueueHandle_t xModeQueue; //moi 
 /* USER CODE BEGIN PV */
 typedef struct {
     float top_left;
@@ -68,62 +66,59 @@ void MX_USART2_UART_Init(void);
 /* Function Prototypes */
 void ReadSensorsTask(void *pvParameters);
 void ControlSteppersTask(void *pvParameters);
+void ManualControlTask(void *pvParameters);
 
 /* USER CODE BEGIN PFP */
-OperationMode current_mode = MODE_AUTO;
+volatile OperationMode current_mode = MODE_AUTO;
 /* USER CODE END PFP */
 
 // Interrupt handler for buttons
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE; // k ktra xem co task uu tien cao hon can th thi ko 
     ManualCommand command;
-
-    switch(GPIO_Pin) {
-        case GPIO_PIN_0:  // Mode toggle
-            current_mode = (current_mode == MODE_AUTO) ? MODE_MANUAL : MODE_AUTO;
-            break;
+	
+		 if (GPIO_Pin == GPIO_PIN_0) {  // Nút chuy?n che do
+        if (current_mode == MODE_AUTO) {
+            current_mode = MODE_MANUAL;
+        } else {
+            current_mode = MODE_AUTO;
+        }
         
+        xQueueSendFromISR(xModeQueue, (const void*)&current_mode, &xHigherPriorityTaskWoken);
+    }
+		 
+		if (current_mode == MODE_MANUAL) 
+		{
+    switch(GPIO_Pin) 
+			{
         case GPIO_PIN_1:  // Horizontal right
-            if (current_mode == MODE_MANUAL) {
                 command = CMD_HORIZONTAL_RIGHT;
                 xQueueSendFromISR(xManualControlQueue, &command, &xHigherPriorityTaskWoken);
-            }
-            break;
-        
-        case GPIO_PIN_4:  // Horizontal left
-            if (current_mode == MODE_MANUAL) {
+								break;      
+        case GPIO_PIN_4:  // Horizontal left         
                 command = CMD_HORIZONTAL_LEFT;
-                xQueueSendFromISR(xManualControlQueue, &command, &xHigherPriorityTaskWoken);
-            }
-            break;
-        
-        case GPIO_PIN_5:  // Vertical up
-            if (current_mode == MODE_MANUAL) {
+                xQueueSendFromISR(xManualControlQueue, &command, &xHigherPriorityTaskWoken);         
+								break;        
+        case GPIO_PIN_5:  // Vertical up         
                 command = CMD_VERTICAL_UP;
                 xQueueSendFromISR(xManualControlQueue, &command, &xHigherPriorityTaskWoken);
-            }
-            break;
-        
-        case GPIO_PIN_12:  // Vertical down
-            if (current_mode == MODE_MANUAL) {
+								break;     
+        case GPIO_PIN_12:  // Vertical down        
                 command = CMD_VERTICAL_DOWN;
                 xQueueSendFromISR(xManualControlQueue, &command, &xHigherPriorityTaskWoken);
-            }
-            break;
-    }
-
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+								break;
+				}
+		}
+				portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-// New task for manual control
 void ManualControlTask(void *pvParameters) {
     ManualCommand command;
     const float MANUAL_STEP_ANGLE = 10.0f;  // Adjust as needed
-
     while(1) {
-        if (xQueueReceive(xManualControlQueue, &command, portMAX_DELAY) == pdPASS) {
-            if (current_mode == MODE_MANUAL) {
-                switch(command) {
+			if (xQueueReceive(xManualControlQueue, &command, portMAX_DELAY) == pdPASS) {    
+         if (current_mode == MODE_MANUAL) {    
+						switch(command) {
                     case CMD_HORIZONTAL_RIGHT:
                         Stepper_MoveToAngle(&horizontal_stepper, 
                             fminf(horizontal_stepper.current_angle + MANUAL_STEP_ANGLE, HORIZONTAL_MAX_ANGLE));
@@ -143,75 +138,20 @@ void ManualControlTask(void *pvParameters) {
                         Stepper_MoveToAngle(&vertical_stepper, 
                             fmaxf(vertical_stepper.current_angle - MANUAL_STEP_ANGLE, VERTICAL_MIN_ANGLE));
                         break;
-                }
-            }
-        }
-    }
+								}
+						}
+				}
+		}
 }
-
-int main(void)
-{
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_I2C2_Init();
-  MX_TIM1_Init();
-  MX_USART2_UART_Init();
-  /* USER CODE BEGIN 2 */
-	// Kh?i t?o d?ng co bu?c
-    Stepper_Init(&vertical_stepper, &htim1, TIM_CHANNEL_1,
-                 VERTICAL_STEPPER_EN_PORT, VERTICAL_STEPPER_EN_PIN,
-                 VERTICAL_STEPPER_DIR_PORT, VERTICAL_STEPPER_DIR_PIN,VERTICAL_STEPPER);
-                 
-    Stepper_Init(&horizontal_stepper, &htim1, TIM_CHANNEL_2,
-                 HORIZONTAL_STEPPER_EN_PORT, HORIZONTAL_STEPPER_EN_PIN,
-                 HORIZONTAL_STEPPER_DIR_PORT, HORIZONTAL_STEPPER_DIR_PIN,HORIZONTAL_STEPPER);
-	
-  /* USER CODE END 2 */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-	if( xStepperQueue == NULL)
-	{
-		// tao queue
-		// Add to main function initialization
-		xManualControlQueue = xQueueCreate(5, sizeof(ManualCommand));
-    xStepperQueue = xQueueCreate(QUEUE_LENGTH, sizeof(StepperAngles));
-    xTaskCreate(ReadSensorsTask, "Sensors", 128, NULL, 2, NULL);
-    xTaskCreate(ControlSteppersTask, "Steppers", 128, NULL, 1, NULL);
-		xTaskCreate(ManualControlTask, "ManualControl", 128, NULL, 3, NULL);
-    vTaskStartScheduler();
-	}
-  /* USER CODE END RTOS_QUEUES */
-
-  
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {}
-  /* USER CODE END 3 */
-}
-
-
 void ReadSensorsTask(void *pvParameters) {
     LightValues sensors;
     StepperAngles angles;
     float current_vertical = 0;
     float current_horizontal = -90.0f;
-    
+		//OperationMode currentMode;
     while(1) {
-        // Ð?c giá tr? t? 4 c?m bi?n
+				//xQueuePeek(xModeQueue, &currentMode, portMAX_DELAY);
+        if (current_mode == MODE_AUTO) {
         TCA9548_SelectChannel(&hi2c1, 4);
         sensors.top_left = BH1750_ReadLight(&hi2c1);
         
@@ -266,10 +206,8 @@ void ReadSensorsTask(void *pvParameters) {
                 current_horizontal = new_horizontal;
             }
         }
-
-        // G?i góc m?i d?n task di?u khi?n d?ng co
         xQueueSend(xStepperQueue, &angles, portMAX_DELAY);
-        
+			}
         // Delay tru?c khi d?c l?i c?m bi?n
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
@@ -277,15 +215,56 @@ void ReadSensorsTask(void *pvParameters) {
 
 void ControlSteppersTask(void *pvParameters) {
     StepperAngles angles;
-    
     while(1) {
-        if(xQueueReceive(xStepperQueue, &angles, portMAX_DELAY) == pdPASS) {
-            // Di chuy?n d?ng co tr?c d?ng
-            Stepper_MoveToAngle(&vertical_stepper, angles.vertical_angle);
-            
-            // Di chuy?n d?ng co tr?c ngang
+			if(xQueueReceive(xStepperQueue, &angles, portMAX_DELAY) == pdPASS) {
+				if (current_mode == MODE_AUTO) {					
+            Stepper_MoveToAngle(&vertical_stepper, angles.vertical_angle);        
             Stepper_MoveToAngle(&horizontal_stepper, angles.horizontal_angle);
-        }
-    }
+					}
+			}
+	}
 }
+
+int main(void)
+{
+  HAL_Init();
+  SystemClock_Config();
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_I2C1_Init();
+  MX_I2C2_Init();
+  MX_TIM1_Init();
+  MX_USART2_UART_Init();
+  /* USER CODE BEGIN 2 */
+	// Kh?i t?o d?ng co bu?c
+    Stepper_Init(&vertical_stepper, &htim1, TIM_CHANNEL_1,
+                 VERTICAL_STEPPER_EN_PORT, VERTICAL_STEPPER_EN_PIN,
+                 VERTICAL_STEPPER_DIR_PORT, VERTICAL_STEPPER_DIR_PIN,VERTICAL_STEPPER);
+                 
+    Stepper_Init(&horizontal_stepper, &htim1, TIM_CHANNEL_2,
+                 HORIZONTAL_STEPPER_EN_PORT, HORIZONTAL_STEPPER_EN_PIN,
+                 HORIZONTAL_STEPPER_DIR_PORT, HORIZONTAL_STEPPER_DIR_PIN,HORIZONTAL_STEPPER);
+	
+  /* USER CODE END 2 */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+	
+	if( xStepperQueue == NULL)
+	{
+
+		xManualControlQueue = xQueueCreate(5, sizeof(ManualCommand));
+    xStepperQueue = xQueueCreate(QUEUE_LENGTH, sizeof(StepperAngles));
+		xModeQueue = xQueueCreate(1, sizeof(OperationMode));
+		
+    xTaskCreate(ReadSensorsTask, "Sensors", 128, NULL, 2, NULL);
+    xTaskCreate(ControlSteppersTask, "Steppers", 128, NULL, 1, NULL);
+		xTaskCreate(ManualControlTask, "ManualControl", 128, NULL, 3, NULL);
+    vTaskStartScheduler();
+	}
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {}
+  /* USER CODE END 3 */
+}
+
 
