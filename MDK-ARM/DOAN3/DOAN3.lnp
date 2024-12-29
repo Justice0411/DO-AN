@@ -8,6 +8,7 @@
 "doan3\freertos.o"
 "doan3\stm32f1xx_it.o"
 "doan3\stm32f1xx_hal_msp.o"
+"doan3\ina219.o"
 "doan3\stm32f1xx_hal_gpio_ex.o"
 "doan3\stm32f1xx_hal.o"
 "doan3\stm32f1xx_hal_rcc.o"

@@ -1,5 +1,5 @@
 doan3\peripherals.o: ..\Core\Src\peripherals.c
-doan3\peripherals.o: ../Core/Inc/peripherals.h
+doan3\peripherals.o: ../Core/Inc/main.h
 doan3\peripherals.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h
 doan3\peripherals.o: ../Core/Inc/stm32f1xx_hal_conf.h
 doan3\peripherals.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rcc.h
@@ -29,5 +29,5 @@ doan3\peripherals.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
 doan3\peripherals.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 doan3\peripherals.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 doan3\peripherals.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
+doan3\peripherals.o: ../Core/Inc/peripherals.h
 doan3\peripherals.o: ../Core/Inc/stepper.h
-doan3\peripherals.o: ../Core/Inc/main.h

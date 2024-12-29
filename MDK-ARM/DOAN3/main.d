@@ -49,3 +49,4 @@ doan3\main.o: C:\Keil_v536\ARM\ARMCC\Bin\..\include\stdio.h
 doan3\main.o: C:\Keil_v536\ARM\ARMCC\Bin\..\include\math.h
 doan3\main.o: C:\Keil_v536\ARM\ARMCC\Bin\..\include\stdlib.h
 doan3\main.o: ../Core/Inc/peripherals.h
+doan3\main.o: ../Core/Inc/INA219.h

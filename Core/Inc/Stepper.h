@@ -3,10 +3,10 @@
 #define STEPPER_H
 #include "main.h"
 // Ð?nh nghia chân GPIO chính xác
-#define VERTICAL_STEPPER_EN_PIN    GPIO_PIN_6     // PA6 
-#define VERTICAL_STEPPER_DIR_PIN   GPIO_PIN_7     // PA7
-#define HORIZONTAL_STEPPER_EN_PIN  GPIO_PIN_10    // PA10
-#define HORIZONTAL_STEPPER_DIR_PIN GPIO_PIN_11    // PA11
+#define VERTICAL_STEPPER_EN_PIN    GPIO_PIN_10     // PA6 
+#define VERTICAL_STEPPER_DIR_PIN   GPIO_PIN_11     // PA7
+#define HORIZONTAL_STEPPER_EN_PIN  GPIO_PIN_6    // PA10
+#define HORIZONTAL_STEPPER_DIR_PIN GPIO_PIN_7    // PA11
 #define VERTICAL_STEPPER_EN_PORT   GPIOA
 #define VERTICAL_STEPPER_DIR_PORT  GPIOA
 #define HORIZONTAL_STEPPER_EN_PORT GPIOA
@@ -14,8 +14,9 @@
 
 // C?u hình d?ng co bu?c
 #define STEPS_PER_REVOLUTION 200    // 1.8° m?i bu?c
-#define MICROSTEPS 16             // Có dùng microstepping
-#define GEAR_RATIO 1               // Không có h?p s?
+#define GEAR_RATIO 1        // Không có h?p s?
+#define VERTICAL_STEPPER_MICROSTEPS 16   // Microstep cho d?ng co d?c
+#define HORIZONTAL_STEPPER_MICROSTEPS 8 // Microstep cho d?ng co ngang
 
 typedef enum {
     HORIZONTAL_STEPPER,
@@ -36,6 +37,7 @@ typedef struct {
     int32_t target_position;
 	
     uint32_t steps_per_revolution;
+		uint32_t microsteps;
     float current_angle;
 		float home_position;    // Thêm v? trí home
 	
